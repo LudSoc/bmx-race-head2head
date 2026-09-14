@@ -42,12 +42,19 @@ const harnessSrc = [
   block(html, 'function eventNameCell(c) {'),
   block(html, 'function renderH2HTable(confrontations) {'),
   block(html, 'function renderChronoTable(confrontations, metric) {'),
-  block(html, 'function renderViewSelector(chronoStats, activeView, rankCount) {'),
+  block(html, 'function renderViewSelector(chronoStats, activeView, rankCount, racesCount = 0) {'),
   block(html, 'function renderH2HHeader(stats, viewScore) {'),
-  block(html, 'function filterConfrontations(confrontations, cat, year) {'),
+  block(html, 'function raceKeyOf(d) {'),
+  block(html, 'function phaseOrder(name) {'),
+  block(html, 'function sharedRaces(aDetails, bDetails) {'),
+  block(html, 'function flattenSharedRaces(confrontations) {'),
+  block(html, 'function renderRaceTable(races) {'),
+  block(html, 'function specialLabel(r) {'),
+  block(html, 'function renderSharedRaces(shared) {'),
+  block(html, 'function filterConfrontations(confrontations, cat, year, sameRaceOnly) {'),
   block(html, 'function confrontationYears(confrontations) {'),
   block(html, 'function renderYearFilter(years, activeYear) {'),
-].join('\n') + '\nreturn { CHRONO_METRICS, fmtChrono, bestChrono, chronoBests, computeChronoStats, renderH2HTable, renderChronoTable, renderViewSelector, renderH2HHeader, filterConfrontations, confrontationYears, renderYearFilter, __setPilots: (a, b) => { pilotA = a; pilotB = b; } };';
+].join('\n') + '\nreturn { CHRONO_METRICS, fmtChrono, bestChrono, chronoBests, computeChronoStats, renderH2HTable, renderRaceTable, flattenSharedRaces, renderChronoTable, renderViewSelector, renderH2HHeader, raceKeyOf, sharedRaces, phaseOrder, specialLabel, renderSharedRaces, eventNameCell, filterConfrontations, confrontationYears, renderYearFilter, __setPilots: (a, b) => { pilotA = a; pilotB = b; } };';
 const H = new Function('__SC', harnessSrc)(SC);
 
 // --- bestChrono : règles d'exclusion ---
@@ -186,6 +193,155 @@ test('filterConfrontations : catégorie + année combinables', () => {
   assert.equal(H.filterConfrontations(YEAR_CONFS, 'Elite', '').length, 1);
   assert.equal(H.filterConfrontations(YEAR_CONFS, 'U19', '2025').length, 1);
   assert.equal(H.filterConfrontations(YEAR_CONFS, '', '2024').length, 0);
+});
+
+test('phaseOrder : manches → éliminatoires → finale → super finale', () => {
+  assert.equal(H.phaseOrder('Moto 1'), 0);
+  assert.equal(H.phaseOrder('Manche 2'), 0);
+  assert.equal(H.phaseOrder('Time Trial'), 0, 'qualif chrono d’abord');
+  assert.equal(H.phaseOrder('Qualif 1'), 2, 'tours qualifs précoces');
+  assert.equal(H.phaseOrder('Tour 1'), 2);
+  assert.equal(H.phaseOrder('LastChance'), 5, 'sans espace aussi');
+  assert.equal(H.phaseOrder('Last Chance'), 5);
+  assert.equal(H.phaseOrder('1/16 de Finale'), 20);
+  assert.equal(H.phaseOrder('1/8 Final'), 30, 'huitième, pas LA finale');
+  assert.equal(H.phaseOrder('1/4 de Finale'), 40);
+  assert.equal(H.phaseOrder('Quart de finale'), 40);
+  assert.equal(H.phaseOrder('Demi Finale'), 50);
+  assert.equal(H.phaseOrder('Demi-finale'), 50);
+  assert.equal(H.phaseOrder('Finale'), 60);
+  assert.equal(H.phaseOrder('Finale A'), 60);
+  assert.equal(H.phaseOrder('Finale B'), 55, 'petite finale avant');
+  assert.equal(H.phaseOrder('Super Final'), 70, 'super finale en dernier');
+  assert.equal(H.phaseOrder('Truc inconnu'), 45);
+  assert.equal(H.phaseOrder(''), 45);
+  assert.ok(H.phaseOrder('Moto 3') < H.phaseOrder('1/2 Finale') &&
+    H.phaseOrder('1/2 Finale') < H.phaseOrder('Finale') &&
+    H.phaseOrder('Finale') < H.phaseOrder('Super Final'), 'ordre total');
+});
+
+test('sharedRaces : finale en premier, manches ensuite', () => {
+  const out = H.sharedRaces(
+    [{ phaseName: 'Super Final', phaseCode: 'TTF', raceName: 'SF', result: 1 },
+     { phaseName: 'Time Trial', phaseCode: 'TT', raceName: 'TT', result: 1 }],
+    [{ phaseName: 'Time Trial', phaseCode: 'TT', raceName: 'TT', result: 2 },
+     { phaseName: 'Super Final', phaseCode: 'TTF', raceName: 'SF', result: 2 }]);
+  assert.deepEqual(out.map(s => s.phase), ['Super Final', 'Time Trial']);
+});
+
+test('eventNameCell : CDM → uci.org, FR inchangé', () => {
+  const HUB = 'https://www.uci.org/race-hub/2026-uci-bmx-racing-world-cup-round-5/1GY1HT3eUP3zffWTCOODIB';
+  const wc = H.eventNameCell({ account: { accountCode: 'uciworldcup' }, event: { eventId: 'wc2026r5', eventName: 'Coupe du monde #5', url: HUB }, cls: {} });
+  assert.ok(wc.includes(HUB) && wc.includes('target="_blank"'), 'lien uci.org : ' + wc);
+  const wcNoUrl = H.eventNameCell({ account: { accountCode: 'uciworldcup' }, event: { eventId: 'wc2026r5', eventName: 'CDM' }, cls: {} });
+  assert.ok(!wcNoUrl.includes('<a'), 'sans URL : texte seul');
+  const fr = H.eventNameCell({ account: { accountCode: 'ffc' }, event: { eventId: 'evt1', eventName: 'CDF' }, cls: { perpetualClassCode: 'EH' } });
+  assert.ok(fr.includes('https://our.sqorz.com/org/ffc/event/evt1/class/EH'), 'FR → Sqorz : ' + fr);
+});
+
+test('raceKeyOf / sharedRaces : même manche = même raceName + phaseCode', () => {
+  const m1a = { phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 2 };
+  const m1b = { phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 5 };
+  const m1c = { phaseName: 'Manche 1', phaseCode: 'M1', raceName: '4', result: 1 };
+  assert.equal(H.raceKeyOf(m1a), '3%M1');
+  assert.equal(H.raceKeyOf({ phaseName: 'Manche 1', result: 2 }), null, 'sans raceName/phaseCode');
+  assert.deepEqual(H.sharedRaces([m1a], [m1b]), [{ key: '3%M1', phase: 'Manche 1', a: 2, b: 5 }]);
+  assert.deepEqual(H.sharedRaces([m1a], [m1c]), [], 'manches différentes');
+  assert.deepEqual(H.sharedRaces([{ phaseName: 'Moto 1', result: 1 }], [{ phaseName: 'Moto 1', result: 2 }]), [], 'données UEC sans manches');
+  assert.deepEqual(
+    H.sharedRaces(
+      [{ n: 'Manche 1', pc: 'M1', rn: '3', r: 2 }],
+      [{ phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 5 }]),
+    [{ key: '3%M1', phase: 'Manche 1', a: 2, b: 5 }], 'slim + expansé mélangés (index brut en mode chrono)');
+  assert.deepEqual(
+    H.sharedRaces(
+      [{ phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 2 }],
+      [{ phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 103000 }]),
+    [], 'DNS exclu (pas sur la grille)');
+  assert.equal(
+    H.sharedRaces(
+      [{ phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 100000 }],
+      [{ phaseName: 'Manche 1', phaseCode: 'M1', raceName: '3', result: 4 }]).length,
+    1, 'DNF inclus (a pris le départ)');
+  assert.deepEqual(H.sharedRaces(null, [m1b]), [], 'détails absents');
+  // Time Trial : runs en solo, jamais la même course (même en slim avec rn)
+  assert.deepEqual(
+    H.sharedRaces(
+      [{ n: 'Time Trial', pc: 'TT', rn: 'TT53', r: 1 }],
+      [{ n: 'Time Trial', pc: 'TT', rn: 'TT52', r: 1 }]),
+    []);
+});
+
+test('renderSharedRaces : détail manche par manche, vainqueur en gras', () => {
+  assert.equal(H.renderSharedRaces([]), '', 'vide');
+  assert.equal(H.renderSharedRaces(null), '', 'null');
+  const out = H.renderSharedRaces([
+    { key: '3%M1', phase: 'Manche 1', a: 2, b: 5 },
+    { key: '1%F', phase: 'Finale', a: 1, b: 3 },
+  ]);
+  assert.ok(out.includes('shared-races-row'), 'sous-ligne');
+  assert.ok(out.includes('Manche 1') && out.includes('Finale'), 'phases nommées');
+  assert.ok(out.includes('<b>2e</b>') && out.includes('<b>1er</b>'), 'vainqueurs en gras');
+  assert.ok(!out.includes('<b>5e</b>') && !out.includes('<b>3e</b>'), 'perdants simples');
+  const dnf = H.renderSharedRaces([{ key: '3%M1', phase: 'Manche 1', a: 100000, b: 4 }]);
+  assert.ok(dnf.includes('DNF') && !dnf.includes('<b>'), 'abandon sans gras');
+});
+
+test('flattenSharedRaces : une ligne par manche, tri desc', () => {
+  const confs = [
+    { event: { eventDate: '2026-03-28', eventName: 'E1' }, account: {}, cls: { className: 'Elite' },
+      shared: [{ key: '1%M1', phase: 'Manche 1', a: 2, b: 1 }] },
+    { event: { eventDate: '2026-05-10', eventName: 'E2' }, account: {}, cls: { className: 'Elite' },
+      shared: [{ key: '2%M2', phase: 'Manche 2', a: 4, b: 2 }, { key: '1%F', phase: 'Finale', a: 1, b: 3 }] },
+    { event: { eventDate: '2026-04-18', eventName: 'E3' }, account: {}, cls: { className: 'Elite' }, shared: [] },
+  ];
+  const flat = H.flattenSharedRaces(confs);
+  assert.equal(flat.length, 3, '2 + 1 manches, épreuve vide ignorée');
+  assert.deepEqual(flat.map(r => r.phase), ['Finale', 'Manche 2', 'Manche 1'], 'date desc, finale d’abord');
+  assert.equal(flat[0].a, 1, 'rangs conservés');
+  const sameDay = H.flattenSharedRaces([{
+    event: { eventDate: '2026-05-10', eventName: 'E' }, account: {}, cls: {},
+    shared: [{ key: '1%F', phase: 'Finale', a: 1, b: 2 }, { key: '3%M1', phase: 'Manche 1', a: 2, b: 1 }],
+  }]);
+  assert.deepEqual(sameDay.map(r => r.phase), ['Finale', 'Manche 1'], 'même date : finale en premier');
+  assert.deepEqual(H.flattenSharedRaces([]), []);
+  assert.deepEqual(H.flattenSharedRaces(null), []);
+});
+
+test('renderRaceTable : manches + vainqueurs, vide si rien', () => {
+  H.__setPilots({ firstName: 'Alan', lastName: 'A' }, { firstName: 'Ben', lastName: 'B' });
+  assert.equal(H.renderRaceTable([]), '');
+  const out = H.renderRaceTable([
+    { event: { eventDate: '2026-05-10', eventName: 'E2' }, account: {}, cls: { className: 'Elite' }, phase: 'Finale', key: '1%F', a: 1, b: 3 },
+    { event: { eventDate: '2026-05-10', eventName: 'E2' }, account: {}, cls: { className: 'Elite' }, phase: 'Manche 2', key: '2%M2', a: 4, b: 2 },
+  ]);
+  assert.ok(out.includes('<th>Manche</th>'), 'colonne Manche');
+  assert.ok(out.includes('Finale') && out.includes('Manche 2'), 'phases listées');
+  assert.ok(out.includes('🥇'), 'médaille 1er');
+  const dnf = H.renderRaceTable([
+    { event: { eventDate: '2026-05-10', eventName: 'E2' }, account: {}, cls: {}, phase: 'Manche 1', key: '1%M1', a: 100000, b: 4 },
+  ]);
+  assert.ok(dnf.includes('DNF'), 'abandon lisible');
+});
+
+test('renderViewSelector : pilule Manches quand il y a des manches', () => {
+  const out = H.renderViewSelector([], 'rank', 9, 13);
+  assert.ok(out.includes('data-chrono-view="races"'), 'pilule Manches');
+  assert.ok(out.includes('(13)'), 'compte des manches');
+  assert.ok(!H.renderViewSelector([], 'rank', 9, 0).includes('data-chrono-view="races"'), 'masquée à 0');
+  assert.equal(H.renderViewSelector([], 'rank', 9), '', 'une seule vue = masqué (inchangé)');
+});
+
+test('filterConfrontations : même course uniquement', () => {
+  const confs = [
+    { cls: { className: 'Elite' }, event: { eventDate: '2026-05-01' }, shared: [{ key: '1%M1', phase: 'Manche 1', a: 1, b: 2 }] },
+    { cls: { className: 'Elite' }, event: { eventDate: '2026-04-01' }, shared: [] },
+    { cls: { className: 'U19' }, event: { eventDate: '2026-03-01' } },
+  ];
+  assert.equal(H.filterConfrontations(confs, '', '', true).length, 1, 'seule la manche partagée');
+  assert.equal(H.filterConfrontations(confs, '', '', false).length, 3, 'sans filtre : tout');
+  assert.equal(H.filterConfrontations(confs, '', '').length, 3, '4e arg optionnel (compat)');
+  assert.equal(H.filterConfrontations(confs, 'U19', '', true).length, 0, 'combiné catégorie');
 });
 
 test('confrontationYears : années triées desc, sans date ignorée', () => {

@@ -116,6 +116,27 @@ Les lignes où l'un des deux a un code spécial (DNF/DNS/DSQ) sont affichées en
 
 Si les deux pilotes se sont affrontés dans plusieurs catégories, un sélecteur permet de filtrer sur une catégorie spécifique. Les stats globales se recalculent en conséquence.
 
+### Filtre « même course » et vue « Manches communes » (ajoutés le 2026-09-11)
+
+Une case à cocher « Même course uniquement (N) » ne garde que les confrontations où les deux
+pilotes ont pris le **même départ** (même `raceName` + `phaseCode`, tous deux non-DNS — un DNF
+compte, il a pris le départ). Chaque confrontation porte sa liste (`shared`, triée finale
+d'abord : super finale, (grande) finale, petite finale, demis, quarts, 1/8 → 1/32, qualifs,
+manches), sous-ligne 🏁 avec le détail manche par manche et le vainqueur en gras ; l'en-tête, les cartes et les vues
+chrono se recalculent sur le filtré. Détection sur les **détails bruts** (slim, complets même
+en mode chrono qui ne garde que les phases chronométrées — zéro surcoût mémoire). Sans
+identité de manche (Time Trial en runs solo, données UEC réduites aux noms de phases),
+aucune course ne peut être partagée : ces confrontations sont exclues quand le filtre est actif
+(la case est masquée s'il n'y en a aucune).
+
+La vue **« 🏁 Manches communes »** (pilule à côté de « Classement final » et des chronos,
+masquée à 0) bascule tout l'affichage à l'échelle des manches : `flattenSharedRaces` aplatit
+les confrontations filtrées (tri date desc), le tableau liste chaque manche (date, événement,
+manche, places, vainqueur), et en-tête + cartes portent sur les manches (réutilisation de
+`computeH2HStats` sur des pseudo-confrontations rang A/B). La case « même course » est masquée
+dans cette vue (tout y est en même course par construction) ; repli sur les rangs si les
+filtres vident la vue.
+
 ---
 
 ## Cas limites
