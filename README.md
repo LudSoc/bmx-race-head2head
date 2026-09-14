@@ -55,3 +55,11 @@ Comparez deux pilotes BMX Race face à face : victoires, podiums, taux de réuss
 HTML/CSS/JS, sans framework, sans étape de build. Socle partagé (`SqorzCommon`) chargé depuis sqorz-stats. Données issues de l'[API publique Sqorz](https://our.sqorz.com) + courses européennes UEC (JSTiming).
 
 > Projet communautaire non officiel, non affilié à Sqorz.
+
+## Licence
+
+Ce projet est sous licence **GNU Affero General Public License v3 (AGPLv3)** — voir `LICENSE`.
+
+Concrètement : vous pouvez utiliser, modifier et repartager ce code (y compris hébergé
+sur le web), **à condition de repartager vos modifications sous la même licence**.
+© 2026 ludovic.socie — versions antérieures au 14/09/2026 diffusées sous licence MIT.
