@@ -10,7 +10,7 @@ const root = path.join(__dirname, '..');
 const workspace = path.join(root, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const commonSrc = fs.readFileSync(path.join(workspace, 'sqorz_stats', 'common.js'), 'utf8');
-const SC = new Function('window', commonSrc + '\nreturn window.SqorzCommon;')({});
+const SC = new Function('window', commonSrc + '\nreturn window.BmxCommon;')({});
 
 function block(src, start, indent = '') {
   const i = src.indexOf(start);
@@ -28,7 +28,7 @@ function stmt(src, start) {
 const harnessSrc = [
   'const { isNotTimedPhase, num, escape } = __SC;',
   'let pilotA = null, pilotB = null;',
-  "const SQORZ_STATS_BASE = 'https://example.invalid/';",
+  "const STATS_BASE = 'https://example.invalid/';",
   block(html, 'const normClubCode = s =>'),
   "for (const [k, v] of Object.entries({ besanc: 'BMX BESANCON' })) clubFullNames.set(k, v);",
   block(html, 'function clubDisplayName(raw) {'),

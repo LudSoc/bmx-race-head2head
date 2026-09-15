@@ -2,7 +2,7 @@
 
 **[🇬🇧 English](#english) · [🇫🇷 Français](#français)**
 
-Part of [Sqorz Hub](https://ludsoc.github.io/sqorz-hub/) — BMX Race statistics tools.
+Part of [Sqorz Hub](https://ludsoc.github.io/bmx-race-hub/) — BMX Race statistics tools.
 
 ---
 
@@ -22,11 +22,11 @@ Compare two BMX Race pilots head-to-head: victories, podiums, win rates, and dir
 
 ### Live
 
-**[ludsoc.github.io/sqorz-head2head](https://ludsoc.github.io/sqorz-head2head/)**
+**[ludsoc.github.io/bmx-race-head2head](https://ludsoc.github.io/bmx-race-head2head/)**
 
 ### Tech
 
-HTML/CSS/JS, no framework, no build step. Shared core (`SqorzCommon`) loaded from sqorz-stats. Data from the public [Sqorz API](https://our.sqorz.com) + UEC European races (JSTiming).
+HTML/CSS/JS, no framework, no build step. Shared core (`BmxCommon`) loaded from bmx-race-stats. Data from the public [Sqorz API](https://our.sqorz.com) + UEC European races (JSTiming).
 
 > Community project, not affiliated with Sqorz.
 
@@ -48,11 +48,11 @@ Comparez deux pilotes BMX Race face à face : victoires, podiums, taux de réuss
 
 ### Accès
 
-**[ludsoc.github.io/sqorz-head2head](https://ludsoc.github.io/sqorz-head2head/)**
+**[ludsoc.github.io/bmx-race-head2head](https://ludsoc.github.io/bmx-race-head2head/)**
 
 ### Technique
 
-HTML/CSS/JS, sans framework, sans étape de build. Socle partagé (`SqorzCommon`) chargé depuis sqorz-stats. Données issues de l'[API publique Sqorz](https://our.sqorz.com) + courses européennes UEC (JSTiming).
+HTML/CSS/JS, sans framework, sans étape de build. Socle partagé (`BmxCommon`) chargé depuis bmx-race-stats. Données issues de l'[API publique Sqorz](https://our.sqorz.com) + courses européennes UEC (JSTiming).
 
 > Projet communautaire non officiel, non affilié à Sqorz.
 
