@@ -1364,7 +1364,7 @@
 'use strict';
 if (!window.BmxCommon) throw new Error('[h2h] common.js introuvable — recharge la page.');
 // Socle partagé (common.js) : utils, expansion d'index, chargeur à cache, dates.
-const { norm, escape, humanError, expandIndex, loadIndexCached, renderDataDates, setTextStatus, setBarProgress, isNotTimedPhase, num } = window.BmxCommon;
+const { norm, escape, humanError, loadIndexCached, renderDataDates, setTextStatus, setBarProgress, isNotTimedPhase, num } = window.BmxCommon;
 // --- Noms complets des clubs (clubs.json, cf. club_stats/tools/clubs/README.md) ---
 // Normalisation compatible club_stats (conserve '-' et la ponctuation : JOUE-T ≠ JOUE T).
 const normClubCode = s => (s || '').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
