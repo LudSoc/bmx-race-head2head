@@ -1405,6 +1405,12 @@ const WC_INDEX_SOURCES = [
   'https://github.com/LudSoc/bmx-race-stats/releases/latest/download/uci-worldcup-index.json',
   'https://raw.githubusercontent.com/LudSoc/bmx-race-stats/main/uci-worldcup-index.json',
 ];
+// Index UCI (Mondiaux BMX Racing) : mêmes sources, optionnel.
+const UCI_INDEX_SOURCES = [
+  'https://pub-7af06f138c97425f8062b881846803cb.r2.dev/uci-index.json',
+  'https://github.com/LudSoc/bmx-race-stats/releases/latest/download/uci-index.json',
+  'https://raw.githubusercontent.com/LudSoc/bmx-race-stats/main/uci-index.json',
+];
 const STATS_BASE = window.location.protocol === 'file:'
   ? '../sqorz_stats/index.html'
   : 'https://ludsoc.github.io/bmx-race-stats/';
@@ -1493,15 +1499,17 @@ function specialLabel(r) {
 // ── État global ──────────────────────────────────
 let pilotsIndex = null; // l'index FR expansé
 let uecIndex = null;    // l'index UEC expansé (optionnel — l'app fonctionne sans)
+let uciIndex = null;    // l'index UCI Mondiaux expansé (idem)
 let wcIndex = null;     // l'index Coupe du monde UCI expansé (idem)
 let pilotA = null;      // { firstName, lastName, groupName, normKey }
 let pilotB = null;      // idem
 
-// Tous les événements FR + UEC (l'UEC enrichit recherche, suggestions et confrontations).
+// Tous les événements FR + UEC + UCI + WC (enrichit recherche, suggestions et confrontations).
 function allEvents() {
   const out = [];
   if (pilotsIndex) out.push(...(pilotsIndex.events || []));
   if (uecIndex) out.push(...(uecIndex.events || []));
+  if (uciIndex) out.push(...(uciIndex.events || []));
   if (wcIndex) out.push(...(wcIndex.events || []));
   return out;
 }
@@ -1538,8 +1546,10 @@ const INDEX_META_URL = 'https://ludsoc.github.io/bmx-race-stats/pilots-index.met
 // Index UEC : même cache (clé dédiée), piloté par son propre meta.json.
 const UEC_INDEX_CACHE_KEY = 'https://bmx-race.local/cache/uec-index.json';
 const WC_INDEX_CACHE_KEY = 'https://bmx-race.local/cache/uci-worldcup-index.json';
+const UCI_INDEX_CACHE_KEY = 'https://bmx-race.local/cache/uci-index.json';
 const UEC_INDEX_META_URL = 'https://ludsoc.github.io/bmx-race-stats/uec-index.meta.json';
 const WC_INDEX_META_URL = 'https://ludsoc.github.io/bmx-race-stats/uci-worldcup-index.meta.json';
+const UCI_INDEX_META_URL = 'https://ludsoc.github.io/bmx-race-stats/uci-index.meta.json';
 
 const indexStatus = (text, isError) => setTextStatus(statusEl, text, isError);
 function pilotsCfg() {
@@ -1558,6 +1568,14 @@ function uecCfg() {
     onStatus: indexStatus, onProgress: setProgress,
   };
 }
+function uciCfg() {
+  return {
+    metaUrl: UCI_INDEX_META_URL, cacheKey: UCI_INDEX_CACHE_KEY, sources: UCI_INDEX_SOURCES,
+      tag: '[h2h:uci]', label: 'Index UCI Mondiaux', estimatedSize: 5_000_000,
+      expandOpts: { details: 'chrono', series: false },
+    onStatus: indexStatus, onProgress: setProgress,
+  };
+}
 function wcCfg() {
   return {
     metaUrl: WC_INDEX_META_URL, cacheKey: WC_INDEX_CACHE_KEY, sources: WC_INDEX_SOURCES,
@@ -1572,6 +1590,7 @@ function showDataDates() {
   renderDataDates([
     { tag: 'FR', iso: pilotsIndex && pilotsIndex.generated },
     { tag: 'UEC', iso: uecIndex && uecIndex.generated },
+    { tag: 'UCI', iso: uciIndex && uciIndex.generated },
     { tag: 'WC', iso: wcIndex && wcIndex.generated },
   ]);
 }
@@ -1589,6 +1608,8 @@ async function loadIndex() {
     finishPrimaryLoad();
     // UEC : arrière-plan — recherche et suggestions l'intègrent à son arrivée.
     loadUecInBackground();
+    // UCI Mondiaux : idem.
+    loadUciInBackground();
     // Coupe du monde UCI : idem.
     loadWcInBackground();
   } catch (e) {
@@ -1612,6 +1633,16 @@ async function loadUecInBackground() {
   } catch (e) {
     console.warn('[h2h] uec-index.json indisponible :', e && e.message);
     uecIndex = null;
+    return;
+  }
+  showDataDates();
+}
+async function loadUciInBackground() {
+  try {
+    uciIndex = await loadIndexCached({ ...uciCfg(), quiet: true });
+  } catch (e) {
+    console.warn('[h2h] uci-index.json indisponible :', e && e.message);
+    uciIndex = null;
     return;
   }
   showDataDates();
@@ -1817,7 +1848,7 @@ function computeTopOpponents(pilot, maxN = 10) {
         const oppKey = norm((c.firstName || '') + ' ' + (c.lastName || '')).trim();
         if (!oppKey || oppKey === pilotKey) continue;
 
-        const confrontationKey = ev.event.eventId + '|' + cls.perpetualClassCode;
+        const confrontationKey = (ev.account?.accountCode || 'src') + '|' + ev.event.eventId + '|' + cls.perpetualClassCode;
         if (!opponents.has(oppKey)) {
           opponents.set(oppKey, {
             firstName: c.firstName || '',
